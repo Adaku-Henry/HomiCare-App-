@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 88" role="img" aria-labelledby="title">
+  <title id="title">Airtel Money</title>
+  <rect width="240" height="88" rx="12" fill="#ed1c24"/>
+  <path d="M39 15c17-8 35 4 34 19-1 13-17 23-29 32 16-2 33-11 43-23 8-10 5-25-7-32-12-7-29-5-41 4z" fill="#fff"/>
+  <text x="130" y="43" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="700" fill="#fff">airtel</text>
+  <text x="130" y="66" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" font-weight="700" font-style="italic" fill="#ffd84d">money</text>
+</svg>

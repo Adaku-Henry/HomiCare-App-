@@ -1,0 +1,1 @@
+export { MessagingPages } from '@/MessagingPages';

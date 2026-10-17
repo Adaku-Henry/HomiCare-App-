@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0044FF"/>
+      <stop offset="100%" stop-color="#0022AA"/>
+    </linearGradient>
+
+    <!-- 3D Orange Heart Gradient -->
+    <linearGradient id="orange3d" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFAA00"/>
+      <stop offset="50%" stop-color="#FF6600"/>
+      <stop offset="100%" stop-color="#CC2200"/>
+    </linearGradient>
+
+    <!-- 3D Gold Accent Gradient -->
+    <linearGradient id="gold3d" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFDD00"/>
+      <stop offset="100%" stop-color="#FF8800"/>
+    </linearGradient>
+
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Rich Blue Background -->
+  <rect width="500" height="500" rx="40" fill="url(#bgGrad)"/>
+
+  <!-- Logo Group with Shadow -->
+  <g filter="url(#dropShadow)" transform="translate(0, -10)">
+    <!-- Left Orange Hand / Heart Arc -->
+    <path d="M 230,325 C 160,285 90,215 90,130 C 90,60 145,20 205,20 C 240,20 256,45 256,45 C 256,45 272,20 307,20 C 325,20 338,27 350,35 C 325,55 300,90 290,125 C 270,180 290,230 285,255 C 280,270 255,300 230,325 Z" fill="url(#orange3d)"/>
+
+    <!-- Bubbles top-left -->
+    <circle cx="95" cy="55" r="16" fill="url(#gold3d)"/>
+    <circle cx="78" cy="85" r="12" fill="url(#gold3d)"/>
+
+    <!-- Right Green/Gold Leaf Arc -->
+    <path d="M 256,330 C 295,290 370,225 370,140 C 370,75 330,30 280,30 C 295,55 310,85 310,120 C 310,185 270,235 270,265 C 270,285 250,310 256,330 Z" fill="url(#orange3d)"/>
+
+    <!-- Leaf -->
+    <path d="M 350,65 C 395,75 410,120 375,155 C 350,130 340,85 350,65 Z" fill="url(#gold3d)"/>
+
+    <!-- House Roof -->
+    <path d="M 160,180 L 256,100 L 352,180 L 330,180 L 256,118 L 182,180 Z" fill="url(#gold3d)"/>
+    <path d="M 188,175 L 256,118 L 324,175 L 324,235 L 188,235 Z" fill="#FFFFFF"/>
+    <rect x="195" y="128" width="14" height="28" fill="url(#gold3d)"/>
+
+    <!-- Windows -->
+    <rect x="234" y="160" width="18" height="18" rx="3" fill="url(#orange3d)"/>
+    <rect x="258" y="160" width="18" height="18" rx="3" fill="url(#orange3d)"/>
+    <rect x="234" y="184" width="18" height="18" rx="3" fill="url(#orange3d)"/>
+    <rect x="258" y="184" width="18" height="18" rx="3" fill="url(#orange3d)"/>
+
+    <!-- Text "HomiCare" 3D Orange -->
+    <text x="35" y="395" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold" font-size="82" fill="url(#gold3d)">HomiCare</text>
+
+    <!-- Heart above 'i' -->
+    <path d="M 235,332 C 235,327 240,322 245,327 C 250,322 255,327 255,332 C 255,337 245,344 245,344 C 245,344 235,337 235,332 Z" fill="#FF4400"/>
+
+    <!-- Shield and Heart icons around tagline -->
+    <g transform="translate(38, 416) scale(0.06)">
+      <path d="M208 0 C320 30, 416 80, 416 224 C416 350, 280 460, 208 512 C136 460, 0 350, 0 224 C0 80, 96 30, 208 0 Z" fill="none" stroke="url(#gold3d)" stroke-width="40"/>
+      <path d="M120 240 L180 300 L300 160" fill="none" stroke="url(#gold3d)" stroke-width="40" stroke-linecap="round"/>
+    </g>
+
+    <!-- White Tagline Text -->
+    <text x="75" y="442" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="600" font-size="22" fill="#FFFFFF" letter-spacing="1.5">Care. Trust. Comfort. Always.</text>
+
+    <g transform="translate(438, 418) scale(0.06)">
+      <path d="M 200 60 C 130 0, 0 80, 0 190 C 0 300, 200 420, 200 420 C 200 420, 400 300, 400 190 C 400 80, 270 0, 200 60 Z" fill="none" stroke="url(#gold3d)" stroke-width="35"/>
+    </g>
+  </g>
+</svg>

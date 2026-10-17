@@ -23,6 +23,7 @@ dist-ssr
 .env
 # Next.js build output
 backend/.next/
+backend/.next-dev/
 backend/node_modules/
 
 # Node modules & build artifacts
@@ -35,3 +36,16 @@ android/.gradle/
 android/app/build/
 android/build-tools/
 .vercel
+.env*
+!.env.example
+!.env.*.example
+node_modules
+.next
+.env.local.bolt/
+.claude/
+android/platforms/
+android/oracleJdk-27/
+backend/tsconfig.tsbuildinfo
+backend/$null
+public/downloads/HomiCare-release.apk
+/.bolt/
