@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.85"
+        android:scaleY="0.85"
+        android:pivotX="54"
+        android:pivotY="54">
+
+        <!-- Outer Heart Left Branch -->
+        <path
+            android:fillColor="#FF7700"
+            android:pathData="M54,75 C38,62 22,46 22,29 C22,15 33,7 44,7 C51,7 54,12 54,12 C54,12 57,7 64,7 C71,7 77,11 81,16 C76,21 70,29 67,36 C62,48 66,58 65,63 C63,67 58,71 54,75 Z" />
+
+        <!-- Outer Heart Right Branch (Leaf Arc) -->
+        <path
+            android:fillColor="#FF8800"
+            android:pathData="M54,76 C62,68 78,55 78,38 C78,24 70,14 59,14 C63,20 66,27 66,35 C66,49 57,60 57,66 C57,71 53,74 54,76 Z" />
+
+        <!-- Leaf Accent -->
+        <path
+            android:fillColor="#FFAA00"
+            android:pathData="M73,21 C83,23 87,33 79,41 C73,35 71,25 73,21 Z" />
+
+        <!-- House Roof -->
+        <path
+            android:fillColor="#1E293B"
+            android:pathData="M35,47 L54,30 L73,47 L68,47 L54,34 L40,47 Z" />
+
+        <!-- House Body -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M41,46 L54,34 L67,46 L67,58 L41,58 Z" />
+
+        <!-- Chimney -->
+        <path
+            android:fillColor="#1E293B"
+            android:pathData="M42,36 L45,36 L45,41 L42,41 Z" />
+
+        <!-- 4 Orange Windows -->
+        <path
+            android:fillColor="#FF7700"
+            android:pathData="M49,42 h4 v4 h-4 z M55,42 h4 v4 h-4 z M49,48 h4 v4 h-4 z M55,48 h4 v4 h-4 z" />
+
+        <!-- Dots top left -->
+        <path
+            android:fillColor="#FF9900"
+            android:pathData="M18,12 A3,3 0 1,1 18,11.99 Z M22,19 A2.5,2.5 0 1,1 22,18.99 Z" />
+
+        <!-- Text Brand Name "HomiCare" -->
+        <path
+            android:fillColor="#FF8800"
+            android:pathData="M16,84 h3 v-10 h-3 v4 h-4 v-4 h-3 v10 h3 v-4 h4 z
+                              M25,81 c0,2 2,3 4,3 c2,0 4,-1 4,-3 c0,-2 -2,-3 -4,-3 c-2,0 -4,1 -4,3 z
+                              M36,84 h3 v-6 h2 v6 h3 v-6 h2 v6 h3 v-8 h-13 z
+                              M52,84 h3 v-8 h-3 z" />
+
+        <path
+            android:fillColor="#FFAA00"
+            android:pathData="M59,81 c0,2 2,3 4,3 c2,0 4,-1 4,-3 c0,-2 -2,-3 -4,-3 c-2,0 -4,1 -4,3 z
+                              M70,84 h3 v-3 c1,2 3,3 5,3 c3,0 5,-2 5,-5 c0,-3 -2,-5 -5,-5 c-2,0 -4,1 -5,3 v-3 h-3 z
+                              M86,81 c0,2 2,3 4,3 c2,0 4,-1 4,-3 c0,-2 -2,-3 -4,-3 c-2,0 -4,1 -4,3 z" />
+
+        <!-- Tagline White text "Care. Trust. Comfort. Always." -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M16,92 h7 v1 h-6 v2 h5 v1 h-5 v2 h6 v1 h-7 z
+                              M28,99 h1 v-7 h-1 z
+                              M33,99 h1 v-7 h-1 z
+                              M38,99 h1 v-7 h-1 z
+                              M45,99 h1 v-7 h-1 z" />
+    </group>
+</vector>

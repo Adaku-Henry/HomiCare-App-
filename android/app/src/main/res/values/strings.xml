@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HomiCare+</string>
+    <string name="title_activity_main">HomiCare+</string>
+    <string name="package_name">com.homicare.app</string>
+    <string name="custom_url_scheme">com.homicare.app</string>
+</resources>

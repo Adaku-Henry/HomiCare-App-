@@ -1,0 +1,111 @@
+apply plugin: 'com.android.application'
+
+def homicareLauncherLogo = new File(rootProject.projectDir.parentFile, 'public/icons/HomiCare Glossy Heart Logo.png')
+def generatedLauncherRes = layout.buildDirectory.dir('generated/res/homicareLauncher')
+
+android {
+    namespace "com.homicare.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.homicare.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+android.sourceSets.main.res.srcDir(generatedLauncherRes)
+
+def generateHomiCareLauncherIcons = tasks.register('generateHomiCareLauncherIcons') {
+    inputs.file(homicareLauncherLogo)
+    outputs.dir(generatedLauncherRes)
+
+    doLast {
+        def source = javax.imageio.ImageIO.read(homicareLauncherLogo)
+        if (source == null) {
+            throw new GradleException("Unable to read HomiCare launcher logo: ${homicareLauncherLogo}")
+        }
+
+        def densityScales = [mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4]
+        densityScales.each { density, scale ->
+            def mipmapDir = new File(generatedLauncherRes.get().asFile, "mipmap-${density}")
+            if (!mipmapDir.exists() && !mipmapDir.mkdirs()) {
+                throw new GradleException("Unable to create launcher icon directory: ${mipmapDir}")
+            }
+
+            def renderIcon = { String filename, int canvasSize, double logoScale ->
+                def output = new java.awt.image.BufferedImage(canvasSize, canvasSize, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+                def graphics = output.createGraphics()
+                graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+                graphics.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY)
+                int logoSize = (int) Math.round(canvasSize * logoScale)
+                int offset = (int) Math.round((canvasSize - logoSize) / 2.0)
+                graphics.drawImage(source, offset, offset, logoSize, logoSize, null)
+                graphics.dispose()
+
+                def destination = new File(mipmapDir, filename)
+                if (!javax.imageio.ImageIO.write(output, 'png', destination)) {
+                    throw new GradleException("Unable to write HomiCare launcher icon: ${destination}")
+                }
+            }
+
+            def launcherSize = Math.round(48 * scale) as int
+            def adaptiveLayerSize = Math.round(108 * scale) as int
+            renderIcon('homicare_launcher.png', launcherSize, 1.0)
+            renderIcon('homicare_launcher_round.png', launcherSize, 0.68)
+            renderIcon('homicare_launcher_foreground.png', adaptiveLayerSize, 0.68)
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(generateHomiCareLauncherIcons)
+}
+
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('Resources')) {
+        task.dependsOn(generateHomiCareLauncherIcons)
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
