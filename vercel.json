@@ -1,3 +1,4 @@
+
 {
   "version": 2,
   "framework": "vite",
@@ -5,6 +6,9 @@
   "buildCommand": "npm run build:frontend",
   "outputDirectory": "dist",
   "routes": [
+    {
+      "handle": "filesystem"
+    },
     {
       "src": "/(.*)",
       "dest": "/index.html"
