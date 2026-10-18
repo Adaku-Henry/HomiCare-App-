@@ -9,6 +9,43 @@ const backendBaseUrl = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/$
 const getCacheTtlMs = 15_000;
 const getCache = new Map<string, { expiresAt: number; value: unknown }>();
 
+function normalizeSortBy(value: string | null): string {
+  const normalized = (value ?? 'recommended').trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    recommented: 'recommended',
+    recommened: 'recommended',
+    recommended: 'recommended',
+    mostpopular: 'recommended',
+    popular: 'recommended',
+    rating: 'rating',
+    highestrated: 'rating',
+    bestrated: 'rating',
+    price: 'price',
+    lowestprice: 'price',
+    cheapest: 'price',
+    experience: 'experience',
+    mostexperienced: 'experience',
+    experienced: 'experience',
+    distance: 'distance',
+    nearest: 'distance',
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
+function normalizeCategorySlug(value: string | null): string | null {
+  if (!value) return null;
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^a-z0-9-]+/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return slug || null;
+}
+
 const fallbackCategories = [
   { id: 'cleaning', name: 'Cleaning', slug: 'cleaning', icon: 'Sparkles', description: 'Routine and deep cleaning for homes and offices.', sort_order: 1 },
   { id: 'plumbing', name: 'Plumbing', slug: 'plumbing', icon: 'Wrench', description: 'Repairs, installations, and maintenance for pipes and fixtures.', sort_order: 2 },
@@ -82,7 +119,6 @@ export async function backendRequest<T>(path: string, init: RequestInit = {}, au
     getCache.clear();
   }
 
-  // If no backend URL is configured or relative /api is used on Capacitor mobile
   const isCapacitor = typeof window !== 'undefined' && window.location.protocol === 'capacitor:';
 
   if (!import.meta.env.VITE_BACKEND_URL && isCapacitor) {
@@ -103,8 +139,18 @@ export async function backendRequest<T>(path: string, init: RequestInit = {}, au
     try {
       const parsed: unknown = JSON.parse(responseText);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) payload = parsed as ApiResponse<T>;
+      else if (Array.isArray(parsed)) payload = { data: parsed as T };
     } catch {
-      throw new Error(`Backend request to ${path} returned an invalid response (HTTP ${response.status}).`);
+      // Some backend endpoints can return a raw array or an empty document.
+      if (responseText.trim().startsWith('[')) {
+        try {
+          payload = { data: JSON.parse(responseText) as T };
+        } catch {
+          throw new Error(`Backend request to ${path} returned an invalid response (HTTP ${response.status}).`);
+        }
+      } else {
+        throw new Error(`Backend request to ${path} returned an invalid response (HTTP ${response.status}).`);
+      }
     }
   }
 
@@ -113,13 +159,15 @@ export async function backendRequest<T>(path: string, init: RequestInit = {}, au
     Object.assign(error, { status: response.status });
     throw error;
   }
-  if (!payload || !('data' in payload)) {
+
+  const dataResult = payload && 'data' in payload ? payload.data : responseText.trim() ? (JSON.parse(responseText) as T) : undefined;
+  if (method === 'GET' && dataResult === undefined && !payload) {
     throw new Error(`Backend request to ${path} returned no data.`);
   }
 
   if (method === 'GET') {
     if (getCache.size >= 50) getCache.delete(getCache.keys().next().value as string);
-    getCache.set(cacheKey, { expiresAt: Date.now() + getCacheTtlMs, value: payload.data });
+    getCache.set(cacheKey, { expiresAt: Date.now() + getCacheTtlMs, value: dataResult ?? payload?.data ?? null });
   }
-  return payload.data as T;
+  return (dataResult ?? payload?.data ?? null) as T;
 }

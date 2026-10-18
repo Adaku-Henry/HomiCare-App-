@@ -13,10 +13,30 @@ function isMissingSkillsSearchColumnError(message: string) {
     && /(does not exist|could not find|not found|schema cache|42703|PGRST204)/i.test(message);
 }
 
+function normalizeCategorySlug(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase().replace(/[_\s]+/g, '-').replace(/[^a-z0-9-]+/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return normalized || null;
+}
+
+function normalizeSortBy(value: string | null): string {
+  const normalized = (value ?? 'recommended').trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    recommented: 'recommended',
+    recommened: 'recommended',
+    mostpopular: 'recommended',
+    popular: 'recommended',
+    highestrated: 'rating',
+    bestrated: 'rating',
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const categoryId = params.get('categoryId');
-  const categorySlug = params.get('categorySlug');
+  const categorySlug = normalizeCategorySlug(params.get('categorySlug'));
   const includeProviderId = params.get('includeProviderId');
   const search = (params.get('q') || '').replace(/[,%()"'\\.*]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
   const location = (params.get('location') || '').trim().slice(0, 100);
@@ -26,7 +46,7 @@ export async function GET(request: NextRequest) {
   const verifiedOnly = params.get('verifiedOnly') === 'true';
   const availableOnly = params.get('availableOnly') === 'true';
   const businessOnly = params.get('businessOnly') === 'true';
-  const sortBy = params.get('sortBy') || 'recommended';
+  const sortBy = normalizeSortBy(params.get('sortBy'));
   const requestedLimit = Number(params.get('limit') || 30);
   if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
     return NextResponse.json({ error: 'limit must be a positive whole number.' }, { status: 400 });
@@ -40,7 +60,7 @@ export async function GET(request: NextRequest) {
   if (includeProviderId && !uuidPattern.test(includeProviderId)) {
     return NextResponse.json({ error: 'includeProviderId must be a valid UUID.' }, { status: 400 });
   }
-  if (categorySlug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(categorySlug)) {
+  if (categorySlug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug)) {
     return NextResponse.json({ error: 'categorySlug is invalid.' }, { status: 400 });
   }
   if (!Number.isFinite(minRating) || minRating < 0 || minRating > 5) {

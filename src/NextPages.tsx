@@ -222,7 +222,12 @@ interface CommunityAttachment {
   contentType: string;
 }
 
-const communityStorageKey = 'homicare-community-posts';
+interface StoredCommunityAttachment {
+  name: string;
+  path: string;
+  contentType: string;
+}
+
 const communityMediaTypes = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
   'video/mp4', 'video/webm', 'video/quicktime',
@@ -242,17 +247,7 @@ const samplePosts: CommunityPost[] = [
 ];
 
 function CommunityFeed() {
-  const [posts, setPosts] = useState<CommunityPost[]>(() => {
-    try {
-      const savedPosts = window.localStorage.getItem(communityStorageKey);
-      if (!savedPosts) return samplePosts;
-      const saved = JSON.parse(savedPosts) as CommunityPost[];
-      const savedById = new Map(saved.map((post) => [post.id, post]));
-      return [...saved, ...samplePosts.filter((post) => !savedById.has(post.id))];
-    } catch {
-      return samplePosts;
-    }
-  });
+  const [posts, setPosts] = useState<CommunityPost[]>(samplePosts);
   const [category, setCategory] = useState('All');
   const [postCategory, setPostCategory] = useState('Tips');
   const [title, setTitle] = useState('');
@@ -261,11 +256,74 @@ function CommunityFeed() {
   const [notice, setNotice] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const visiblePosts = category === 'All' ? posts : posts.filter((post) => post.category === category);
 
   useEffect(() => {
-    window.localStorage.setItem(communityStorageKey, JSON.stringify(posts));
-  }, [posts]);
+    let active = true;
+    const loadPosts = async () => {
+      setLoadingPosts(true);
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!authData.user) {
+          if (active) setPosts(samplePosts);
+          return;
+        }
+
+        const { data, error: postsError } = await supabase
+          .from('community_posts')
+          .select('id, author_name, category, title, body, like_count, attachments, created_at')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (postsError) throw postsError;
+
+        const storedPosts = data || [];
+        const storedAttachments = storedPosts.flatMap((post) =>
+          ((post.attachments || []) as StoredCommunityAttachment[]).map((attachment) => attachment.path),
+        );
+        const signedUrls = new Map<string, string>();
+        if (storedAttachments.length) {
+          const { data: signedData, error: signedError } = await supabase.storage
+            .from('community-media')
+            .createSignedUrls(storedAttachments, 3600);
+          if (signedError) throw signedError;
+          for (const signed of signedData || []) {
+            if (signed.path && signed.signedUrl) signedUrls.set(signed.path, signed.signedUrl);
+          }
+        }
+
+        const loadedPosts: CommunityPost[] = storedPosts.map((post) => ({
+          id: post.id,
+          author: post.author_name,
+          category: post.category,
+          title: post.title,
+          body: post.body,
+          likes: post.like_count,
+          attachments: ((post.attachments || []) as StoredCommunityAttachment[])
+            .filter((attachment) => signedUrls.has(attachment.path))
+            .map((attachment) => ({
+              name: attachment.name,
+              contentType: attachment.contentType,
+              url: signedUrls.get(attachment.path)!,
+            })),
+        }));
+        const loadedIds = new Set(loadedPosts.map((post) => post.id));
+        if (active) setPosts([...loadedPosts, ...samplePosts.filter((post) => !loadedIds.has(post.id))]);
+      } catch (cause) {
+        if (active) {
+          setPosts(samplePosts);
+          const message = cause instanceof Error ? cause.message : 'Unknown community loading error.';
+          setNotice(`Community posts could not be loaded from the shared database. Check that the latest community migration is applied. ${message}`);
+        }
+      } finally {
+        if (active) setLoadingPosts(false);
+      }
+    };
+
+    void loadPosts();
+    return () => { active = false; };
+  }, []);
 
   const selectFiles = (selectedFiles: File[]) => {
     const invalidFile = selectedFiles.find((file) => !communityMediaTypes.includes(file.type) || file.size > maxCommunityFileSize);
@@ -284,19 +342,18 @@ function CommunityFeed() {
     if (!title.trim() || !body.trim()) return;
     setUploading(true);
     setNotice('');
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (files.length && (authError || !authData.user)) {
-      setNotice('Sign in before uploading attachments. Your post can still be shared without files.');
-      setUploading(false);
-      return;
-    }
 
     const uploadedPaths: string[] = [];
-    const attachments: CommunityAttachment[] = [];
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Sign in before creating a community post.');
+      const user = authData.user;
+      const storedAttachments: StoredCommunityAttachment[] = [];
+
       for (const file of files) {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `${authData.user!.id}/${crypto.randomUUID()}-${safeName}`;
+        const path = `${user.id}/${crypto.randomUUID()}-${safeName}`;
         const { error: uploadError } = await supabase.storage.from('community-media').upload(path, file, {
           cacheControl: '3600',
           contentType: file.type,
@@ -304,21 +361,64 @@ function CommunityFeed() {
         });
         if (uploadError) throw uploadError;
         uploadedPaths.push(path);
-        const { data } = supabase.storage.from('community-media').getPublicUrl(path);
-        attachments.push({ name: file.name, url: data.publicUrl, contentType: file.type });
+        storedAttachments.push({ name: file.name, path, contentType: file.type });
       }
 
-      setPosts((current) => [{ id: crypto.randomUUID(), author: 'You', category: postCategory, title: title.trim(), body: body.trim(), likes: 0, attachments }, ...current]);
+      const { data: signedData, error: signedError } = storedAttachments.length
+        ? await supabase.storage.from('community-media').createSignedUrls(uploadedPaths, 3600)
+        : { data: [], error: null };
+      if (signedError) throw signedError;
+      const signedUrls = new Map((signedData || []).flatMap((item) =>
+        item.path && item.signedUrl ? [[item.path, item.signedUrl] as const] : [],
+      ));
+      const attachments: CommunityAttachment[] = storedAttachments.map((attachment) => {
+        const url = signedUrls.get(attachment.path);
+        if (!url) throw new Error(`Could not create a view link for ${attachment.name}.`);
+        return { name: attachment.name, contentType: attachment.contentType, url };
+      });
+
+      const authorName = String(user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'HomiCare member').slice(0, 80);
+      const authorRole = user.app_metadata?.role === 'admin'
+        ? 'admin'
+        : user.user_metadata?.role === 'provider' ? 'provider' : 'customer';
+      const { data: savedPost, error: saveError } = await supabase
+        .from('community_posts')
+        .insert({
+          author_id: user.id,
+          author_name: authorName,
+          author_role: authorRole,
+          category: postCategory,
+          title: title.trim(),
+          body: body.trim(),
+          media_path: uploadedPaths[0] || null,
+          attachments: storedAttachments,
+        })
+        .select('id, author_name, category, title, body, like_count')
+        .single();
+      if (saveError) throw saveError;
+
+      setPosts((current) => [{
+        id: savedPost.id,
+        author: savedPost.author_name,
+        category: savedPost.category,
+        title: savedPost.title,
+        body: savedPost.body,
+        likes: savedPost.like_count,
+        attachments,
+      }, ...current]);
       setTitle('');
       setBody('');
       setFiles([]);
       setCategory('All');
       setComposerOpen(false);
-      setNotice('Your post is saved on this device and attachments are uploaded.');
+      setNotice('Your post and attachments were saved to HomiCare and are available to other signed-in members.');
     } catch (cause) {
-      if (uploadedPaths.length) await supabase.storage.from('community-media').remove(uploadedPaths);
       const message = cause instanceof Error ? cause.message : 'Unknown upload error';
-      setNotice(`Attachments could not be uploaded. Apply the community media migration and check storage access. ${message}`);
+      const { error: cleanupError } = uploadedPaths.length
+        ? await supabase.storage.from('community-media').remove(uploadedPaths)
+        : { error: null };
+      const cleanupMessage = cleanupError ? ` Uploaded files could not be cleaned up: ${cleanupError.message}` : '';
+      setNotice(`Your post could not be saved. Check that the latest community media migration is applied. ${message}${cleanupMessage}`);
     } finally {
       setUploading(false);
     }
@@ -350,8 +450,8 @@ function CommunityFeed() {
         {files.length > 0 && <ul className="space-y-1">{files.map((file, index) => <li key={`${file.name}-${file.lastModified}`} className="flex items-center gap-2 text-xs text-slate-600"><FileText className="h-4 w-4 shrink-0 text-orange-700" /><span className="min-w-0 flex-1 truncate">{file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB</span><button type="button" aria-label={`Remove ${file.name}`} onClick={() => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="rounded p-1 text-slate-500 hover:bg-slate-100"><X className="h-4 w-4" /></button></li>)}</ul>}
         <div className="flex justify-end gap-2"><button type="button" disabled={uploading} onClick={() => { setComposerOpen(false); setFiles([]); }} className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancel</button><button disabled={uploading} className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><Send className="h-4 w-4" />{uploading ? 'Uploading...' : 'Post'}</button></div>
       </form>}
-      <section className="divide-y divide-slate-200 border-y border-slate-200 bg-white">{visiblePosts.map((post) => <article key={post.id} className="p-4 sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-orange-100 text-sm font-bold text-orange-800">{post.author.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{post.author}</p><p className="text-xs text-slate-500">{post.category} · 2 hours ago</p></div><span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="Online" /></div><h2 className="mt-3 text-sm font-semibold text-slate-900">{post.title}</h2><p className="mt-1 text-sm leading-relaxed text-slate-600">{post.body}</p>{post.image && <img src={post.image} alt="A clean, comfortable living room" className="mt-3 max-h-80 w-full rounded-md object-cover" />}{post.attachments?.map((attachment) => <div key={attachment.url} className="mt-3">{attachment.contentType.startsWith('image/') ? <a href={attachment.url} target="_blank" rel="noreferrer"><img src={attachment.url} alt={attachment.name} className="max-h-96 w-full rounded-md object-contain" /></a> : attachment.contentType.startsWith('video/') ? <video controls preload="metadata" className="max-h-96 w-full rounded-md bg-black" src={attachment.url}>{attachment.name}</video> : <a href={attachment.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-orange-300"><FileText className="h-4 w-4 shrink-0 text-orange-700" /><span className="truncate">{attachment.name}</span></a>}</div>)}<div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3"><button aria-label={`${post.liked ? 'Unlike' : 'Like'} ${post.title}`} aria-pressed={post.liked || false} onClick={() => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, liked: !item.liked, likes: item.likes + (item.liked ? -1 : 1) } : item))} className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold ${post.liked ? 'text-orange-700' : 'text-slate-600 hover:bg-orange-50'}`}><Heart className="h-4 w-4" fill={post.liked ? 'currentColor' : 'none'} />{post.liked ? 'Liked' : 'Like'} <span>{post.likes}</span></button><button onClick={() => void sharePost(post)} className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"><Share2 className="h-4 w-4" />Share</button></div></article>)}{visiblePosts.length === 0 && <p className="p-6 text-center text-sm text-slate-500">No posts in this category yet.</p>}</section>
-      <p className="mt-4 flex items-start gap-2 text-xs text-slate-500"><AlertTriangle className="h-4 w-4 shrink-0 text-orange-700" />Posts and reactions are saved only on this device. Do not share private addresses or identity documents.</p>
+      <section className="divide-y divide-slate-200 border-y border-slate-200 bg-white">{loadingPosts ? <p className="p-6 text-center text-sm text-slate-500">Loading community posts...</p> : visiblePosts.map((post) => <article key={post.id} className="p-4 sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-orange-100 text-sm font-bold text-orange-800">{post.author.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{post.author}</p><p className="text-xs text-slate-500">{post.category} · 2 hours ago</p></div><span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="Online" /></div><h2 className="mt-3 text-sm font-semibold text-slate-900">{post.title}</h2><p className="mt-1 text-sm leading-relaxed text-slate-600">{post.body}</p>{post.image && <img src={post.image} alt="A clean, comfortable living room" className="mt-3 max-h-80 w-full rounded-md object-cover" />}{post.attachments?.map((attachment) => <div key={attachment.url} className="mt-3">{attachment.contentType.startsWith('image/') ? <a href={attachment.url} target="_blank" rel="noreferrer"><img src={attachment.url} alt={attachment.name} className="max-h-96 w-full rounded-md object-contain" /></a> : attachment.contentType.startsWith('video/') ? <video controls preload="metadata" className="max-h-96 w-full rounded-md bg-black" src={attachment.url}>{attachment.name}</video> : <a href={attachment.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-orange-300"><FileText className="h-4 w-4 shrink-0 text-orange-700" /><span className="truncate">{attachment.name}</span></a>}</div>)}<div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3"><button aria-label={`${post.liked ? 'Unlike' : 'Like'} ${post.title}`} aria-pressed={post.liked || false} onClick={() => setPosts((current) => current.map((item) => item.id === post.id ? { ...item, liked: !item.liked, likes: item.likes + (item.liked ? -1 : 1) } : item))} className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold ${post.liked ? 'text-orange-700' : 'text-slate-600 hover:bg-orange-50'}`}><Heart className="h-4 w-4" fill={post.liked ? 'currentColor' : 'none'} />{post.liked ? 'Liked' : 'Like'} <span>{post.likes}</span></button><button onClick={() => void sharePost(post)} className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"><Share2 className="h-4 w-4" />Share</button></div></article>)}{!loadingPosts && visiblePosts.length === 0 && <p className="p-6 text-center text-sm text-slate-500">No posts in this category yet.</p>}</section>
+      <p className="mt-4 flex items-start gap-2 text-xs text-slate-500"><AlertTriangle className="h-4 w-4 shrink-0 text-orange-700" />Community posts and attachments are shared with signed-in HomiCare members. Do not share private addresses or identity documents.</p>
     </main>
   );
 }
