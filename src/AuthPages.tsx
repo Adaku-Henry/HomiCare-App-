@@ -450,6 +450,7 @@ export function ProviderOnboardingPage() {
         starting_price: pricingModel === 'quote' ? 0 : (Number(startingPrice) || 0),
         service_radius_km: Number(serviceRadius) || 20,
         availability_status: availabilityStatus || 'available',
+        provider_status: 'active',
         years_experience: Number(yearsExperience) || 0,
         is_business: Boolean(isBusiness),
         business_name: isBusiness ? (businessName.trim() || fullName.trim() || null) : null,
