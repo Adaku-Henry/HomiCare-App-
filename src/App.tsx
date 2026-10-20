@@ -33,6 +33,7 @@ import { MyProfilePage, ProfileSettingsPage } from '@/features/profile';
 import { ProvidersPage } from '@/features/providers';
 import { PeoplePage } from '@/PeoplePages';
 import { EcosystemPage, getWorkspaceLinks, isEcosystemPage, ServiceAssistantPage } from '@/features/workspaces';
+import { InAppCall } from '@/InAppCall';
 import { ProfileMediaImage, ProfileMediaVideo } from '@/ProfileMediaImage';
 import constructionImage from '../images/construction.jfif';
 import householdSupportImage from '../images/Household support.jfif';
@@ -3821,7 +3822,7 @@ function AdminPage() {
 // MAIN APP
 // ============================================================
 function AppContent() {
-  const { currentPage, authReady, isAuthenticated } = useApp();
+  const { currentPage, authReady, isAuthenticated, callIntent, setCallIntent } = useApp();
   const [studioOpen, setStudioOpen] = useState(false);
   const nativeApp = Capacitor.isNativePlatform();
 
@@ -3895,6 +3896,17 @@ function AppContent() {
       </main>
       <BottomNav onOpenStudio={() => setStudioOpen(true)} />
       {studioOpen && <CreatorStudioModal onClose={() => setStudioOpen(false)} />}
+      {callIntent && (
+        <InAppCall
+          mode={callIntent.mode}
+          providerId={callIntent.providerId}
+          customerId={callIntent.customerId}
+          currentUserId={callIntent.customerId}
+          callerName={callIntent.peerName}
+          peerName={callIntent.peerName}
+          onClose={() => setCallIntent(null)}
+        />
+      )}
     </div>
   );
 }

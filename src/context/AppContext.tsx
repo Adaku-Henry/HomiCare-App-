@@ -8,8 +8,8 @@ import type { Page } from '@/types';
 interface AppState {
   currentPage: Page;
   setCurrentPage: (p: Page) => void;
-  callIntent: { id: number; type: 'voice' | 'video' } | null;
-  setCallIntent: (intent: { id: number; type: 'voice' | 'video' } | null) => void;
+  callIntent: { mode: 'voice' | 'video'; providerId: string; customerId: string; peerName: string } | null;
+  setCallIntent: (intent: { mode: 'voice' | 'video'; providerId: string; customerId: string; peerName: string } | null) => void;
   selectedProviderId: string | null;
   setSelectedProviderId: (id: string | null) => void;
   selectedPublicProfileId: string | null;
@@ -83,7 +83,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentPage, setCurrentPageState] = useState<Page>(
     isNativeApp && initialLocation.page === 'home' ? 'login' : initialLocation.page,
   );
-  const [callIntent, setCallIntent] = useState<{ id: number; type: 'voice' | 'video' } | null>(null);
+  const [callIntent, setCallIntent] = useState<{ mode: 'voice' | 'video'; providerId: string; customerId: string; peerName: string } | null>(null);
   const [selectedProviderId, setSelectedProviderIdState] = useState<string | null>(initialLocation.providerId);
   const selectedProviderIdRef = useRef(selectedProviderId);
   const [selectedPublicProfileId, setSelectedPublicProfileId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('profile'));

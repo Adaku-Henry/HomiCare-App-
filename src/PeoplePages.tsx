@@ -63,7 +63,7 @@ function safeExternalUrl(value: string | null) {
 
 export function PeoplePage({ conversation = false }: { conversation?: boolean }) {
   const {
-    setCurrentPage, setSelectedProviderId, selectedPublicProfileId, setSelectedPublicProfileId,
+    setCurrentPage, setSelectedProviderId, selectedPublicProfileId, setSelectedPublicProfileId, setCallIntent,
   } = useApp();
   const [userId, setUserId] = useState('');
   const [profiles, setProfiles] = useState<MemberProfile[]>([]);
@@ -268,11 +268,13 @@ export function PeoplePage({ conversation = false }: { conversation?: boolean })
   };
 
   const startMemberCall = (type: 'voice' | 'video') => {
-    if (!selectedProfile || currentConnection?.status !== 'accepted') {
-      setError('You can call a member after your connection request is accepted.');
-      return;
-    }
-    setMemberCallRequest((current) => ({ id: (current?.id || Date.now()) + 1, type }));
+    if (!selectedProfile) return;
+    setCallIntent({
+      mode: type,
+      providerId: selectedProfile.provider_id || selectedProfile.user_id,
+      customerId: userId,
+      peerName: selectedProfile.display_name,
+    });
   };
 
   const connectionFor = (profile: MemberProfile) => connections.find((connection) => (
