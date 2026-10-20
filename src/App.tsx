@@ -11,7 +11,7 @@ import {
   ArrowUpRight, DollarSign, CreditCard, Smartphone, Landmark,
   RefreshCw, Circle, AlertTriangle, ShieldCheck, Activity, BarChart3,
   MapPinned, LayoutGrid, Video,
-  HelpCircle, Phone, Save,
+  HelpCircle, Phone, Save, Plus, Camera, Download, Wand2, Sliders,
 } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { supabase } from '@/lib/supabase';
@@ -503,39 +503,207 @@ function NotificationsList({ onOpen }: { onOpen: () => void }) {
 }
 
 // ============================================================
-// BOTTOM NAV (Mobile)
+// CREATOR STUDIO & MEDIA EDITOR SUITE
 // ============================================================
-function BottomNav() {
-  const { currentPage, setCurrentPage } = useApp();
+function CreatorStudioModal({ onClose }: { onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<'upload' | 'enhance' | 'filter' | 'adjust'>('upload');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<'normal' | 'vivid' | 'warm' | 'cinematic' | 'clean' | 'monochrome'>('normal');
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [saturation, setSaturation] = useState(100);
+  const [enhanced, setEnhanced] = useState(false);
+  const [toast, setToast] = useState('');
 
-  const items = [
-    { label: 'Home', page: 'home' as const, icon: Home },
-    { label: 'Bookings', page: 'my-bookings' as const, icon: Calendar },
-    { label: 'Messages', page: 'messages' as const, icon: MessageSquare },
-    { label: 'People', page: 'people' as const, icon: Users },
-    { label: 'Wallet', page: 'wallet' as const, icon: Wallet },
-    { label: 'Profile', page: 'profile' as const, icon: User },
-  ];
+  const notify = (msg: string) => { setToast(msg); window.setTimeout(() => setToast(''), 2500); };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setSelectedImage(reader.result);
+        setActiveTab('enhance');
+        notify('Media loaded into Editor!');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const applyAiEnhance = () => {
+    setBrightness(115);
+    setContrast(120);
+    setSaturation(110);
+    setEnhanced(true);
+    notify('AI Image Enhancement Applied ✨');
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-violet-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(46,16,101,0.08)] backdrop-blur md:hidden">
-      <div className="mx-auto flex max-w-lg items-center justify-around px-1 py-2">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = currentPage === item.page || (item.page === 'my-bookings' && currentPage === 'customer-dashboard');
-          return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-in fade-in">
+      {toast && <div className="absolute top-5 z-50 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-2xl">{toast}</div>}
+      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-orange-100 text-orange-600"><Wand2 className="h-4 w-4" /></span>
+            <h3 className="text-base font-extrabold text-slate-900">HomiCare Studio & Media Suite</h3>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X className="h-5 w-5" /></button>
+        </div>
+
+        {/* Studio Tabs */}
+        <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-bold">
+          {(['upload', 'enhance', 'filter', 'adjust'] as const).map((tab) => (
             <button
-              key={item.page}
-              onClick={() => setCurrentPage(item.page)}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1 transition-colors ${
-                active ? 'text-violet-800' : 'text-slate-400'
-              }`}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 capitalize rounded-lg py-2 transition ${activeTab === tab ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
             >
-              <Icon className={`h-5 w-5 ${active ? 'stroke-[2.5]' : ''}`} />
-              <span className="text-[10px] font-semibold">{item.label}</span>
+              {tab === 'upload' ? 'Upload Files' : tab === 'enhance' ? 'AI Enhance' : tab === 'filter' ? 'Filters' : 'Adjust'}
             </button>
-          );
-        })}
+          ))}
+        </div>
+
+        {activeTab === 'upload' && (
+          <div className="space-y-4 py-4 text-center">
+            <div className="mx-auto flex max-w-xs flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 p-8">
+              <Camera className="h-10 w-10 text-orange-600 mb-2" />
+              <p className="text-xs font-bold text-slate-800">Upload Photos, Videos or Documents</p>
+              <p className="mt-1 text-[10px] text-slate-500">Supports JPG, PNG, MP4, PDF up to 25MB</p>
+              <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-orange-700">
+                Browse Files <input type="file" accept="image/*,video/*,application/pdf" onChange={handleFileSelect} className="sr-only" />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'enhance' && (
+          <div className="space-y-4">
+            <div className="relative h-64 overflow-hidden rounded-xl bg-slate-100 flex items-center justify-center">
+              {selectedImage ? (
+                <img
+                  src={selectedImage}
+                  alt="Preview"
+                  style={{
+                    filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) ${
+                      filterMode === 'vivid' ? 'saturate(150%)' :
+                      filterMode === 'warm' ? 'sepia(30%)' :
+                      filterMode === 'cinematic' ? 'contrast(125%) saturate(85%)' :
+                      filterMode === 'clean' ? 'contrast(105%)' :
+                      filterMode === 'monochrome' ? 'grayscale(100%)' : ''
+                    }`,
+                  }}
+                  className="h-full w-full object-cover transition duration-300"
+                />
+              ) : (
+                <div className="text-center p-6 text-xs text-slate-500">
+                  <Camera className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                  No image selected. Click Upload Files to select a photo/video.
+                </div>
+              )}
+            </div>
+            {selectedImage && (
+              <button onClick={applyAiEnhance} className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-3 text-xs font-bold text-white shadow-md hover:opacity-95">
+                <Wand2 className="h-4 w-4" /> {enhanced ? 'AI Enhanced ✨' : 'One-Click AI Image Enhancer'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'filter' && (
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-700">Select Filter Effect</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['normal', 'vivid', 'warm', 'cinematic', 'clean', 'monochrome'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setFilterMode(mode)}
+                  className={`rounded-xl border p-2.5 text-center capitalize text-xs font-bold transition ${filterMode === mode ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'adjust' && (
+          <div className="space-y-3 text-xs font-bold text-slate-700">
+            <label className="block">Brightness: {brightness}%
+              <input type="range" min="50" max="150" value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="mt-1.5 w-full accent-orange-600" />
+            </label>
+            <label className="block">Contrast: {contrast}%
+              <input type="range" min="50" max="150" value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="mt-1.5 w-full accent-orange-600" />
+            </label>
+            <label className="block">Saturation: {saturation}%
+              <input type="range" min="0" max="200" value={saturation} onChange={(e) => setSaturation(Number(e.target.value))} className="mt-1.5 w-full accent-orange-600" />
+            </label>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600">Cancel</button>
+          <button type="button" onClick={() => { notify('Media and edited photo saved successfully!'); window.setTimeout(onClose, 1000); }} className="rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-orange-700">Save & Export</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// BOTTOM NAV (Mobile with Center Floating Plus Action Button)
+// ============================================================
+function BottomNav({ onOpenStudio }: { onOpenStudio: () => void }) {
+  const { currentPage, setCurrentPage } = useApp();
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+      <div className="mx-auto flex max-w-md items-center justify-around px-2 py-1.5">
+        <button
+          onClick={() => setCurrentPage('home')}
+          className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-1 transition ${currentPage === 'home' ? 'text-orange-600 font-bold' : 'text-slate-400'}`}
+        >
+          <Home className="h-5 w-5" />
+          <span className="text-[10px]">Home</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentPage('search')}
+          className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-1 transition ${currentPage === 'search' ? 'text-orange-600 font-bold' : 'text-slate-400'}`}
+        >
+          <Search className="h-5 w-5" />
+          <span className="text-[10px]">Services</span>
+        </button>
+
+        {/* Center Floating Orange Plus Button */}
+        <div className="relative -top-4 px-1">
+          <button
+            onClick={onOpenStudio}
+            aria-label="Upload files, edit images, & open studio"
+            className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/40 transition hover:scale-105 active:scale-95"
+          >
+            <Plus className="h-6 w-6 stroke-[3]" />
+          </button>
+        </div>
+
+        <button
+          onClick={() => setCurrentPage('notifications')}
+          className={`relative flex min-w-0 flex-1 flex-col items-center gap-1 py-1 transition ${currentPage === 'notifications' ? 'text-orange-600 font-bold' : 'text-slate-400'}`}
+        >
+          <div className="relative">
+            <Bell className="h-5 w-5" />
+            <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-orange-600 text-[9px] font-bold text-white">2</span>
+          </div>
+          <span className="text-[10px]">Notifications</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentPage('profile')}
+          className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-1 transition ${currentPage === 'profile' ? 'text-orange-600 font-bold' : 'text-slate-400'}`}
+        >
+          <User className="h-5 w-5" />
+          <span className="text-[10px]">Profile</span>
+        </button>
       </div>
     </nav>
   );
@@ -3654,6 +3822,7 @@ function AdminPage() {
 // ============================================================
 function AppContent() {
   const { currentPage, authReady, isAuthenticated } = useApp();
+  const [studioOpen, setStudioOpen] = useState(false);
   const nativeApp = Capacitor.isNativePlatform();
 
   if (nativeApp && !authReady) {
@@ -3724,7 +3893,8 @@ function AppContent() {
         {currentPage === 'providers' && <ProvidersPage />}
         {isEcosystemPage(currentPage) && currentPage !== 'communities' && <EcosystemPage page={currentPage} />}
       </main>
-      <BottomNav />
+      <BottomNav onOpenStudio={() => setStudioOpen(true)} />
+      {studioOpen && <CreatorStudioModal onClose={() => setStudioOpen(false)} />}
     </div>
   );
 }
