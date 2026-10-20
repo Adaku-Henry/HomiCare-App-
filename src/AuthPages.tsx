@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, Clock3, Eye, EyeOff, Home, ImagePlus, MapPin, ShieldCheck, UserRound, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useApp } from '@/context/AppContext';
@@ -23,16 +25,25 @@ export function AuthPage({ mode }: { mode: 'signup' | 'login' }) {
     setNotice('');
 
     try {
-      const { error: socialError } = await supabase.auth.signInWithOAuth({
+      const isNative = Capacitor.isNativePlatform();
+      const redirectTo = `${window.location.origin}/`;
+
+      const { data, error: socialError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}${window.location.pathname}`,
-          skipBrowserRedirect: false,
+          redirectTo,
+          skipBrowserRedirect: isNative,
         },
       });
 
       if (socialError) throw socialError;
-      setNotice(`${provider === 'google' ? 'Google' : 'Facebook'} sign-in started. Complete the browser popup to continue.`);
+
+      if (isNative && data?.url) {
+        await Browser.open({ url: data.url });
+        setNotice(`Complete the ${provider === 'google' ? 'Google' : 'Facebook'} sign-in in your browser popup.`);
+      } else {
+        setNotice(`${provider === 'google' ? 'Google' : 'Facebook'} sign-in started. Complete the popup to continue.`);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : `${provider === 'google' ? 'Google' : 'Facebook'} sign in failed.`);
     } finally {
@@ -88,8 +99,12 @@ export function AuthPage({ mode }: { mode: 'signup' | 'login' }) {
         if (signUpError) throw signUpError;
         setUserRole(role);
         if (role === 'provider') nextPage = 'provider-onboarding';
-        if (!data.session) {
-          setNotice('Check your email to confirm your account, then sign in to continue.');
+
+        // Attempt immediate login after registration
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email: emailAddress, password });
+        if (signInError) {
+          setNotice('Account created successfully! Please sign in with your email and password.');
+          setCurrentPage('login');
           return;
         }
       } else {
@@ -101,8 +116,7 @@ export function AuthPage({ mode }: { mode: 'signup' | 'login' }) {
           nextPage = 'admin';
         } else if (accountRole === 'provider') {
           setUserRole('provider');
-          const { data: profile, error: profileError } = await supabase.from('providers').select('id').eq('user_id', data.user.id).maybeSingle();
-          if (profileError) throw profileError;
+          const { data: profile } = await supabase.from('providers').select('id').eq('user_id', data.user.id).maybeSingle();
           nextPage = profile ? 'provider-dashboard' : 'provider-onboarding';
         } else {
           setUserRole('customer');
